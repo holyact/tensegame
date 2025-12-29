@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>영작 연습: 정답 선택하기</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --success: #10B981;
+            --error: #EF4444;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #1F2937;
+            --text-sub: #6B7280;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 15px 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .score-board {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: #EEF2FF;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        /* --- Game Area --- */
+        #game-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- Card --- */
+        #card-wrapper {
+            width: 100%;
+            max-width: 400px;
+            perspective: 1000px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 30px 25px;
+            text-align: center;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            width: 100%;
+        }
+
+        .question-text {
+            font-size: 1.35rem;
+            color: var(--text-main);
+            margin-bottom: 30px;
+            line-height: 1.5;
+            word-break: keep-all;
+            font-weight: 700;
+        }
+
+        .highlight {
+            color: var(--primary);
+            text-decoration: underline;
+            text-underline-offset: 4px;
+        }
+
+        /* --- Options --- */
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: #FFFFFF;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 1rem;
+            color: var(--text-main);
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            position: relative;
+            outline: none;
+            display: flex;
+            align-items: center;
+            line-height: 1.4;
+        }
+
+        .option-btn:hover {
+            border-color: var(--primary);
+            background-color: #EEF2FF;
+        }
+
+        .option-btn:active {
+            transform: scale(0.98);
+        }
+
+        .option-tag {
+            font-weight: 700;
+            margin-right: 10px;
+            color: var(--primary);
+            min-width: 25px;
+        }
+
+        /* Feedback States */
+        .option-btn.correct {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        .option-btn.correct .option-tag { color: white; }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+        .option-btn.wrong .option-tag { color: white; }
+
+        /* --- Animations --- */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .slide-out {
+            transform: translateX(-50px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Modal (Explanation) --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal {
+            background: white;
+            width: 85%;
+            max-width: 400px;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popUp {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .modal.wrong h3 { color: var(--error); }
+        .modal.finished h3 { color: var(--primary); }
+
+        .modal p {
+            color: var(--text-main);
+            line-height: 1.6;
+            margin-bottom: 25px;
+            font-size: 1.05rem;
+        }
+
+        .modal button {
+            background: var(--text-main);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.1s;
+        }
+        .modal button:active { transform: scale(0.95); }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>영작 연습 Quiz</h1>
+        <div class="score-board">Score: <span id="score">0</span></div>
+    </header>
+
+    <div id="game-container">
+        <div id="card-wrapper">
+            <!-- Card content will be injected here -->
+        </div>
+    </div>
+
+    <!-- Modal for Wrong Answer / Game Over -->
+    <div id="modal-overlay">
+        <div class="modal" id="feedback-modal">
+            <h3 id="modal-title">Oops!</h3>
+            <p id="modal-message">Explanation goes here.</p>
+            <button id="modal-btn">Next</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. Data: Questions Array
+        const questions = [
+            {
+                text: "나는 2년 동안 서울에 살았어 (지금은 아님).",
+                options: {
+                    left: "I lived in Seoul for 2 years.",
+                    right: "I have lived in Seoul for 2 years."
+                },
+                type: "left",
+                explanation: "지금은 살고 있지 않기 때문에 '과거의 끝난 일'입니다. (Simple Past)"
+            },
+            {
+                text: "열쇠를 잃어버려서 지금 방에 들어갈 수가 없어.",
+                options: {
+                    left: "I lost my key.",
+                    right: "I have lost my key."
+                },
+                type: "right",
+                explanation: "과거에 잃어버려서 '지금도' 열쇠가 없는 상태(결과)입니다. (Present Perfect)"
+            },
+            {
+                text: "그녀는 2019년에 파리에 갔어.",
+                options: {
+                    left: "She went to Paris in 2019.",
+                    right: "She has gone to Paris in 2019."
+                },
+                type: "left",
+                explanation: "'2019년'이라는 명확한 과거 시점이 주어졌으므로 과거시제를 씁니다. (Simple Past)"
+            },
+            {
+                text: "나는 그를 2010년부터 알고 지냈어.",
+                options: {
+                    left: "I knew him since 2010.",
+                    right: "I have known him since 2010."
+                },
+                type: "right",
+                explanation: "2010년부터 '지금까지 계속' 알고 지내는 상태입니다. (Present Perfect)"
+            },
+            {
+                text: "방금 막 숙제를 끝냈어!",
+                options: {
+                    left: "I finished my homework just now.",
+                    right: "I have just finished my homework."
+                },
+                type: "right",
+                explanation: "'Just(방금)'와 함께 동작의 완료를 강조할 때는 현재완료가 자연스럽습니다. (완료)"
+            },
+            {
+                text: "그는 3일 전에 새 차를 샀어.",
+                options: {
+                    left: "He bought a new car 3 days ago.",
+                    right: "He has bought a new car 3 days ago."
+                },
+                type: "left",
+                explanation: "'ago'는 명백한 과거 시점이므로 현재완료와 함께 쓸 수 없습니다."
+            },
+            {
+                text: "오늘 커피를 벌써 3잔이나 마셨어 (아직 오늘이 안 끝남).",
+                options: {
+                    left: "I drank 3 cups of coffee today.",
+                    right: "I have drunk 3 cups of coffee today."
+                },
+                type: "right",
+                explanation: "'Today'가 아직 끝나지 않은 시점에서의 반복된 행동은 현재완료를 씁니다."
+            },
+            {
+                text: "너 그 영화 본 적 있니?",
+                options: {
+                    left: "Did you see that movie?",
+                    right: "Have you seen that movie?"
+                },
+                type: "right",
+                explanation: "경험(Ever)을 물어볼 때는 현재완료가 적절합니다."
+            },
+            {
+                text: "우리는 작년에 같은 반이었어.",
+                options: {
+                    left: "We were in the same class last year.",
+                    right: "We have been in the same class last year."
+                },
+                type: "left",
+                explanation: "'Last year'는 끝난 과거 시간이므로 과거시제를 써야 합니다."
+            },
+            {
+                text: "제임스는 아직 도착하지 않았어.",
+                options: {
+                    left: "James didn't arrive yet.",
+                    right: "James hasn't arrived yet."
+                },
+                type: "right",
+                explanation: "'Yet(아직)'은 현재 상황과 연관이 있으므로 현재완료와 자주 쓰입니다."
+            },
+            {
+                text: "어렸을 때 피아노를 쳤었지 (지금은 안 침).",
+                options: {
+                    left: "I played the piano when I was young.",
+                    right: "I have played the piano when I was young."
+                },
+                type: "left",
+                explanation: "'When I was young'은 명백한 과거의 한 시기입니다."
+            },
+            {
+                text: "셰익스피어는 많은 희곡을 썼어.",
+                options: {
+                    left: "Shakespeare wrote many plays.",
+                    right: "Shakespeare has written many plays."
+                },
+                type: "left",
+                explanation: "셰익스피어는 이미 고인이므로 역사적 사실은 과거시제입니다. (Simple Past)"
+            },
+            {
+                text: "봐! 누군가 저 창문을 깼어 (지금 깨져있음).",
+                options: {
+                    left: "Look! Someone broke that window.",
+                    right: "Look! Someone has broken that window."
+                },
+                type: "right",
+                explanation: "지금 창문이 깨져있는 '상태'에 집중하고 있습니다. (Present Perfect)"
+            },
+            {
+                text: "너 어제 탐을 봤니?",
+                options: {
+                    left: "Did you see Tom yesterday?",
+                    right: "Have you seen Tom yesterday?"
+                },
+                type: "left",
+                explanation: "'Yesterday'는 완료되지 않은 기간이 아니라 끝난 과거 시점입니다. (Simple Past)"
+            },
+            {
+                text: "나는 일본에 가본 적이 없어.",
+                options: {
+                    left: "I never went to Japan.",
+                    right: "I have never been to Japan."
+                },
+                type: "right",
+                explanation: "태어나서 지금까지의 '경험'을 말할 때는 현재완료를 씁니다. (Present Perfect)"
+            }
+        ];
+
+        // 2. Variables
+        let currentIdx = 0;
+        let score = 0;
+        let isProcessing = false;
+
+        // DOM Elements
+        const cardWrapper = document.getElementById('card-wrapper');
+        const scoreEl = document.getElementById('score');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-message');
+        const modalBtn = document.getElementById('modal-btn');
+
+        // 3. Game Initialization
+        function initGame() {
+            currentIdx = 0;
+            score = 0;
+            scoreEl.textContent = score;
+            shuffleArray(questions);
+            loadCard();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // 4. Create & Load Card
+        function loadCard() {
+            if (currentIdx >= questions.length) {
+                showGameOver();
+                return;
+            }
+
+            const data = questions[currentIdx];
+            
+            // Create Card HTML
+            const card = document.createElement('div');
+            card.className = 'card fade-in';
+            card.innerHTML = `
+                <div class="question-text">${data.text}</div>
+                <div class="options-list">
+                    <button class="option-btn" onclick="selectAnswer('left', this)">
+                        <span class="option-tag">A</span> ${data.options.left}
+                    </button>
+                    <button class="option-btn" onclick="selectAnswer('right', this)">
+                        <span class="option-tag">B</span> ${data.options.right}
+                    </button>
+                </div>
+            `;
+            
+            cardWrapper.innerHTML = '';
+            cardWrapper.appendChild(card);
+            isProcessing = false;
+        }
+
+        // 5. Interaction Logic
+        function selectAnswer(userChoice, btnElement) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            const currentQ = questions[currentIdx];
+            const isCorrect = userChoice === currentQ.type;
+            const card = document.querySelector('.card');
+
+            if (isCorrect) {
+                // Correct
+                btnElement.classList.add('correct');
+                score += 10;
+                scoreEl.textContent = score;
+
+                setTimeout(() => {
+                    // Transition to next card
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateX(-20px)';
+                    setTimeout(() => {
+                        currentIdx++;
+                        loadCard();
+                    }, 300);
+                }, 600); // Wait a bit so user sees green
+
+            } else {
+                // Wrong
+                btnElement.classList.add('wrong');
+                card.classList.add('shake');
+                
+                // Highlight the correct one as well (optional, but good for learning)
+                // const correctBtn = userChoice === 'left' ? 
+                //     btnElement.nextElementSibling : btnElement.previousElementSibling;
+                // if(correctBtn) correctBtn.classList.add('correct');
+
+                setTimeout(() => {
+                    showModal(false, currentQ.explanation);
+                    card.classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // 6. Modal & Helpers
+        function showModal(isFinished, text) {
+            modalOverlay.style.display = 'flex';
+            const modalBox = document.querySelector('.modal');
+            
+            if (isFinished) {
+                modalBox.className = 'modal finished';
+                modalTitle.textContent = "Great Job!";
+                modalMsg.textContent = `Final Score: ${score} / ${questions.length * 10}`;
+                modalBtn.textContent = "Play Again";
+                modalBtn.onclick = () => {
+                    modalOverlay.style.display = 'none';
+                    initGame();
+                };
+            } else {
+                modalBox.className = 'modal wrong';
+                modalTitle.textContent = "아쉽네요!";
+                modalMsg.textContent = text;
+                modalBtn.textContent = "다음 문제";
+                modalBtn.onclick = () => {
+                    modalOverlay.style.display = 'none';
+                    currentIdx++;
+                    loadCard();
+                };
+            }
+        }
+
+        function showGameOver() {
+            showModal(true, "");
+        }
+
+        // Start Game
+        initGame();
+
+    </script>
+</body>
+</html>
